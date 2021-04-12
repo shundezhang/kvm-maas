@@ -47,4 +47,4 @@
         parent: "{{ maas_dhcp_bridge }}"
     profiles: ["default"]
     wait_for_ipv4_addresses: true
-    timeout: 600
+    #timeout: 60
