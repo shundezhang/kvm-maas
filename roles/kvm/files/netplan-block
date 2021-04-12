@@ -1,0 +1,6 @@
+        eth10:
+            dhcp4: false
+    bridges:
+        br10:
+            interfaces: [eth10]
+            dhcp4: false

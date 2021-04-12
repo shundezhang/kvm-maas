@@ -1,0 +1,50 @@
+---
+- name: install packages for lxd
+  apt:
+    state: latest
+    name: "{{ item }}"
+    update_cache: true
+  with_items:
+    - zfsutils-linux
+
+- name: init lxd
+  include: lxc-init.yml
+
+# - name: Create default profile
+#   lxd_profile:
+#     url: "{{ lxd_url | default('unix:/var/snap/lxd/common/lxd/unix.socket') }}"
+#     name: "default"
+#     state: "present"
+#     config:
+#       user.user-data: |
+#         {{ lxd_cloud_init | default ('') }}
+#     description: "{{ item.description | default ('default profile') }}"
+#     devices:
+#       root:
+#         path: /
+#         pool: "{{ lxd_storage_pool | default ('default') }}"
+#         type: "{{ lxd_disk_type | default ('disk') }}"
+#       eth0:
+#         nictype: "{{ lxd_nictype | default ('bridged') }}"
+#         parent: "{{ lxd_network | default ('lxdbr0') }}"
+#         type: "{{ lxd_interface_type | default ('nic') }}"
+
+- name: create maas container
+  lxd_container:
+    name: maas
+    state: started
+    source:
+      type: image
+      mode: pull
+      server: https://cloud-images.ubuntu.com/releases
+      protocol: simplestreams # if you get a 404, try setting protocol: simplestreams
+      alias: focal
+    devices:
+      eth1:
+        type: nic
+        name: eth1
+        nictype: bridged
+        parent: "{{ maas_dhcp_bridge }}"
+    profiles: ["default"]
+    wait_for_ipv4_addresses: true
+    timeout: 600

@@ -1,0 +1,31 @@
+config:
+  images.auto_update_interval: 15
+storage_pools:
+- config:
+    size: {{ lxd_zfs_size }}
+  description: ""
+  name: {{ lxd_storage_name }}
+  driver: zfs
+networks:
+- name: {{ lxd_bridgeconf_bridge }}
+  type: bridge
+  config:
+    ipv4.address: {{ lxd_bridgeconf_ipv4_network }}
+    ipv4.dhcp: "true"
+    ipv4.dhcp.ranges: "{{ lxd_bridgeconf_ipv4_dhcp_range }}"
+    ipv4.nat: true
+    ipv6.address: "none"
+profiles:
+- config: {}
+  name: default
+  description: ""
+  devices:
+    root:
+      path: /
+      pool: {{ lxd_storage_name }}
+      type: disk
+    eth0:
+      name: eth0
+      nictype: bridged
+      parent: {{ lxd_bridgeconf_bridge }}
+      type: nic

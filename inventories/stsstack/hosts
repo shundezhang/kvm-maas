@@ -1,0 +1,2 @@
+[kvm_host]
+maas ansible_host=10.230.67.161 outbound_interface=ens3 container_name=maas

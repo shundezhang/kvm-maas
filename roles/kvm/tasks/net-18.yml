@@ -1,0 +1,25 @@
+---
+- name: Create eth10
+  command: ip link add eth10 type dummy
+  when:
+    - '"eth10" not in ip_link.stdout'
+
+- name: create dir /etc/network/interfaces.d
+  file:
+    path: /etc/network/interfaces.d
+    state: directory
+
+- name: add kvm-br.cfg file
+  copy:
+    dest: /etc/network/interfaces.d/kvm-br.cfg
+    src: kvm-br.cfg
+
+- name: add a line to include config files in /etc/network/interfaces.d
+  lineinfile:
+    path: /etc/network/interfaces
+    line: 'source /etc/network/interfaces.d/*'
+
+- name: bring up br1
+  command: ifup br1
+  when:
+    - '"br1" not in ip_link.stdout'

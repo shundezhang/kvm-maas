@@ -1,0 +1,8 @@
+---
+
+- hosts: kvm_host
+  become: true
+  roles:
+    - { role: kvm, tags: kvm }
+    - { role: lxc, tags: lxc }
+    - { role: maas, tags: maas }

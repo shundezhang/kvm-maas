@@ -1,0 +1,137 @@
+---
+
+- name: install kvm packages
+  apt:
+    state: latest
+    name: "{{ item }}"
+    update_cache: true
+  with_items:
+    - bridge-utils
+    - qemu
+    - qemu-kvm
+    - libvirt-daemon
+    - libvirt-daemon-system
+    - libvirt-daemon-system-systemd
+    - netscript-2.4
+    - net-tools
+    - python3-libvirt
+    - python3-lxml
+
+# - name: undefine default network
+#   virt_net:
+#     command: undefine
+#     name: default
+
+- name: Add the dummy module
+  modprobe:
+    name: dummy
+    state: present
+
+- name: Grab ip link status
+  command: ip link
+  register: ip_link
+  changed_when: False
+
+- name: create network for ubuntu version {{ ansible_distribution_major_version }}
+  include: "net-{{ ansible_distribution_major_version }}.yml"
+
+- name: get current defautl network definition
+  virt_net:
+    command: get_xml
+    name: default
+  register: default_net_xml
+
+- name: destroy default net
+  virt_net:
+    command: destroy
+    name: default
+  when:
+    - '"br10" not in default_net_xml.get_xml'
+
+- name: undefine default net
+  virt_net:
+    command: undefine
+    name: default
+  when:
+    - '"br10" not in default_net_xml.get_xml'
+
+- name: define default net
+  virt_net:
+    command: define
+    name: default
+    xml: '{{ lookup("file", "net-default.xml") }}'
+  when:
+    - '"br10" not in default_net_xml.get_xml'
+
+- name: make default net autostart
+  virt_net:
+    autostart: yes
+    name: default
+
+- name: start default net
+  virt_net:
+    state: active
+    name: default
+
+- name: list virt pools
+  virt_pool:
+    command: list_pools
+  register: virt_pools
+
+- name: define default pool
+  virt_pool:
+    command: define
+    name: default
+    xml: '{{ lookup("file", "pool-default.xml") }}'
+  when:
+    - '"default" not in virt_pools.list_pools'
+
+- name: make default pool autostart
+  virt_pool:
+    autostart: yes
+    name: default
+
+- name: start default pool
+  virt_pool:
+    state: active
+    name: default
+
+- name: Grab iptables NAT table
+  command: iptables -L -t nat
+  register: iptables_nat
+  changed_when: False
+
+- name: Add iptables masquerading to enable NATing
+  command: |
+    iptables -t nat -A POSTROUTING -o {{ outbound_interface }} -j MASQUERADE \
+    -m comment --comment 'uplink_masquerade'
+  when:
+    - '"uplink_masquerade" not in iptables_nat.stdout'
+
+- name: Grab iptables filters
+  command: iptables -L
+  register: iptables_filters
+  changed_when: False
+
+- name: Add iptables forwarding
+  command: |
+    iptables -A FORWARD -i {{ outbound_interface }} -o br1 \
+    -m state --state RELATED,ESTABLISHED -j ACCEPT \
+    -m comment --comment 'uplink_forward'
+  when:
+    - '"uplink_forward" not in iptables_filters.stdout'
+
+- name: Add iptables forwarding reverse
+  command: |
+    iptables -A FORWARD -i br1 -o {{ outbound_interface }} -j ACCEPT \
+    -m comment --comment 'uplink_forward_reverse'
+  when:
+    - '"uplink_forward_reverse" not in iptables_filters.stdout'
+
+- name: Enable ip forwarding
+  sysctl:
+    name: 'net.ipv4.ip_forward'
+    value: "1"
+    sysctl_set: True
+    state: present
+    reload: yes

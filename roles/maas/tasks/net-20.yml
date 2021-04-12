@@ -1,0 +1,8 @@
+- name: configure netplan
+  blockinfile:
+    path: /etc/netplan/50-cloud-init.yaml
+    insertafter: EOF
+    block: "{{ lookup('file', 'netplan-block') }}"
+
+- name: Apply netplan
+  command: netplan apply

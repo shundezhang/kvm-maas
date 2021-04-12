@@ -1,0 +1,56 @@
+---
+
+- name: BEGIN lxc exec for container {{ container_name }} ...
+  set_fact:
+    ansible_python_interpreter: lxc exec {{ container_name }} -- /usr/bin/python3
+
+- name: config eth1 for ubuntu version {{ ansible_distribution_major_version }}
+  delegate_to: kvm
+  include: "net-{{ ansible_distribution_major_version }}.yml"
+
+- name: add maas 2.9 repo
+  apt_repository:
+    repo: 'ppa:maas/2.9'
+
+- name: install maas
+  apt:
+    name: maas
+    state: "present"
+
+- name: create admin user
+  command: "maas createadmin --username {{ admin_username }} --email {{ admin_email }} --password {{ admin_password }} --ssh-import {{ admin_ssh_key }}"
+  ignore_errors: yes
+
+- name: Set bash as default shell for maas user
+  user: name=maas shell=/usr/bin/bash generate_ssh_key=yes
+  register: user_res
+
+- name: END lxc exec for container {{ container_name }} ...
+  set_fact:
+    ansible_python_interpreter: /usr/bin/python3
+
+- name: Set authorized key to ubuntu user
+  authorized_key:
+    user: ubuntu
+    state: present
+    key: "{{ user_res.ssh_public_key }}"
+
+- name: show virsh address
+  debug:
+    msg: "qemu+ssh://ubuntu@10.4.107.1/system"
+
+- name: get container IP
+  shell: lxc info {{ container_name }} | grep eth0 | grep inet | grep -v inet6 | awk '{print $3}'
+  register: container_ip
+
+- name: Grab iptables NAT table
+  command: iptables -t nat -L PREROUTING
+  register: iptables_nat
+  changed_when: False
+
+- name: Add iptables masquerading to enable NATing
+  command: |
+    iptables -t nat -I PREROUTING -i {{ outbound_interface }} -p TCP -d {{ ansible_default_ipv4.address }} --dport 5240 -j DNAT --to-destination {{ container_ip.stdout }}:5240 \
+    -m comment --comment 'maas_container_forward'
+  when:
+    - '"maas_container_forward" not in iptables_nat.stdout'
