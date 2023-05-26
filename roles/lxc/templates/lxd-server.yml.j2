@@ -29,3 +29,16 @@ profiles:
       nictype: bridged
       parent: {{ lxd_bridgeconf_bridge }}
       type: nic
+- config: {}
+  name: maas
+  description: ""
+  devices:
+    root:
+      path: /
+      pool: {{ lxd_storage_name }}
+      type: disk
+    eth0:
+      name: eth0
+      nictype: bridged
+      parent: br-cont0
+      type: nic

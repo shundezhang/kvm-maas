@@ -3,14 +3,16 @@
 - name: BEGIN lxc exec for container {{ container_name }} ...
   set_fact:
     ansible_python_interpreter: lxc exec {{ container_name }} -- /usr/bin/python3
+  when: container_name is defined and container_name == "maas"
 
 - name: config eth1 for ubuntu version {{ ansible_distribution_major_version }}
   delegate_to: kvm
   include: "net-{{ ansible_distribution_major_version }}.yml"
+  when: container_name is defined and container_name == "maas"
 
-- name: add maas 2.9 repo
+- name: add maas {{ maas_version }} repo
   apt_repository:
-    repo: 'ppa:maas/2.9'
+    repo: 'ppa:maas/{{ maas_version }}'
 
 - name: install maas
   apt:
@@ -28,6 +30,7 @@
 - name: END lxc exec for container {{ container_name }} ...
   set_fact:
     ansible_python_interpreter: /usr/bin/python3
+  when: container_name is defined and container_name == "maas"
 
 - name: Set authorized key to ubuntu user
   authorized_key:
@@ -40,7 +43,7 @@
     msg: "qemu+ssh://ubuntu@10.4.107.1/system"
 
 - name: get container IP
-  shell: lxc info {{ container_name }} | grep eth0 | grep inet | grep -v inet6 | awk '{print $3}'
+  shell: lxc list -c4 --format csv maas | grep eth0 | cut -d' ' -f1
   register: container_ip
 
 - name: Grab iptables NAT table

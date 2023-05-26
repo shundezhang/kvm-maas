@@ -1,0 +1,58 @@
+- name: Create eth10
+  command: ip link add eth10 type dummy
+  when:
+    - '"eth10" not in ip_link.stdout'
+
+# - name: configure netplan 
+#   blockinfile:
+#     path: /etc/netplan/50-cloud-init.yaml
+#     insertafter: EOF
+#     block: "{{ lookup('file', 'netplan-block') }}"
+
+- name: Open netplan yaml file
+  slurp:
+    path: /etc/netplan/50-cloud-init.yaml
+  register: netplan_file
+
+- name: Read netplan yaml to dictionary
+  set_fact:
+    netplan: "{{ netplan_file['content'] | b64decode | from_yaml }}"
+
+- name: Patch yaml dictionary
+  set_fact:
+    netplan: "{{ netplan | combine(newdata, recursive=True) }}"
+  vars: 
+    newdata:
+      network:
+        ethernets:
+          eth10:
+            dhcp4: false
+        bridges:
+          br10:
+            interfaces: [eth10]
+            dhcp4: false
+
+- name: add ip to bridge when not using container
+  set_fact:
+    netplan: "{{ netplan | combine(newdata, recursive=True) }}"
+  vars: 
+    newdata:
+      network:
+        bridges:
+          br10:
+            addresses: [192.168.1.1/24]
+  when: container_name is not defined or container_name != "maas"
+
+# This file is generated from information provided by the datasource.  Changes
+# to it will not persist across an instance reboot.  To disable cloud-init's
+# network configuration capabilities, write a file
+# /etc/cloud/cloud.cfg.d/99-disable-network-config.cfg with the following:
+# network: {config: disabled}
+
+- name: Write yaml file
+  copy:
+    content: '{{ netplan | to_nice_yaml }}'
+    dest: /etc/netplan/50-cloud-init.yaml
+
+- name: Apply netplan
+  command: netplan apply

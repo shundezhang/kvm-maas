@@ -8,4 +8,4 @@ lxd_bridgeconf_bridge: "lxdbr0"
 lxd_bridgeconf_ipv4_network: "10.4.107.1/24"
 lxd_bridgeconf_ipv4_dhcp_range: "10.4.107.100-10.4.107.200"
 
-maas_dhcp_bridge: br10
+maas_dhcp_bridge: br-cont0

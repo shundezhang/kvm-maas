@@ -1,3 +1,6 @@
-[kvm_hosts]
-10.230.41.89 outbound_interface=ens3
+[kvm_host]
 
+[lxd_host]
+#10.230.43.7 outbound_interface=enp2s0f1 container_name=maas maas_version=3.1
+#10.230.43.34 outbound_interface=bond0
+10.230.46.55 outbound_interface=eno1 container_name=maas maas_version=3.2

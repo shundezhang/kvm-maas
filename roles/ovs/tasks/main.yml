@@ -1,0 +1,40 @@
+---
+- name: install network packages
+  apt:
+    state: latest
+    name: "{{ item }}"
+    update_cache: true
+  with_items:
+    - bridge-utils
+    - netscript-2.4
+    - net-tools
+    - openvswitch-switch
+    - python3-openvswitch
+
+- name: create ovs bridge
+  openvswitch.openvswitch.openvswitch_bridge:
+    bridge: ovsbr0
+    state: present
+
+- name: create linux bridge
+  linux_bridge:
+    bridge: br-cont0
+    state: present
+
+- name: add linux bridge to ovs bridge
+  openvswitch.openvswitch.openvswitch_port:
+    bridge: ovsbr0
+    port: br-cont0
+    state: present
+
+- name: add tunnel to ovs bridge
+  openvswitch.openvswitch.openvswitch_port:
+    bridge: ovsbr0
+    port: vxlan{{ index }}
+    state: present
+    set: interface vxlan{{ index }} type=vxlan options:remote_ip={{ item }}
+  with_items:
+  - "{{ groups['lxd_host'] }}"
+  loop_control:
+    index_var: index
+  when: item != inventory_hostname

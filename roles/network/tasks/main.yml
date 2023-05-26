@@ -1,0 +1,22 @@
+- name: install network packages
+  apt:
+    state: latest
+    name: "{{ item }}"
+    update_cache: true
+  with_items:
+    - bridge-utils
+    - netscript-2.4
+    - net-tools
+
+- name: Add the dummy module
+  modprobe:
+    name: dummy
+    state: present
+
+- name: Grab ip link status
+  command: ip link
+  register: ip_link
+  changed_when: False
+
+- name: create network for ubuntu version {{ ansible_distribution_major_version }}
+  include: "net-{{ ansible_distribution_major_version }}.yml"

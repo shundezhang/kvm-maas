@@ -3,6 +3,18 @@
 - hosts: kvm_host
   become: true
   roles:
+    - { role: network, tags: network }
     - { role: kvm, tags: kvm }
-    - { role: lxc, tags: lxc }
+    - role: lxc
+      tags: lxc
+      when: container_name is defined and container_name == "maas"
     - { role: maas, tags: maas }
+
+- hosts: lxd_host
+  become: true
+  roles:
+    - { role: ovs, tags: lxc }
+    - { role: lxc, tags: lxc }
+    - role: maas
+      tags: maas
+      when: container_name is defined and container_name == "maas"
